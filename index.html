@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6bc65">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="当一只小橘猫，在暖洋洋的小屋里探索、跳跃、拍东西。原创 3D 小猫游戏。">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <link rel="stylesheet" href="./style.css">
+  <title>橘子的小小捣蛋日 · 小猫游戏</title>
+</head>
+<body>
+  <canvas id="world" aria-label="小猫的三维小屋"></canvas>
+  <div id="vignette"></div>
+  <div id="hud" class="hidden">
+    <header class="topbar">
+      <div class="brand"><span class="paw-mark">✿</span><div>橘子的小小捣蛋日<small>A LITTLE CAT, A BIG DAY</small></div></div>
+      <div class="top-actions"><span class="fish-count">✦ <b id="stars">0</b><span> / 5</span></span><button id="pauseBtn" class="round" aria-label="暂停">Ⅱ</button></div>
+    </header>
+    <section id="questPanel"><div class="quest-heading"><span>今日小心愿</span><button id="questToggle" aria-label="收起或展开任务">⌃</button></div><div id="questList"></div></section>
+    <div id="grannyStatus"><span class="granny-face">☺</span><div><b id="grannyMood">奶奶在散步</b><small id="grannyHint">轻轻地，别让她听到呀</small></div><div class="mood-track"><i id="moodFill"></i></div></div>
+    <div id="crosshair"><i></i></div>
+    <div id="targetHint"></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <div id="touchControls">
+      <div id="stickZone" aria-label="移动摇杆"><div id="stickBase"><div id="stickKnob"></div></div><small>移动</small></div>
+      <div id="lookHint">划动右侧 · 看看四周</div>
+      <div class="action-controls"><button id="grabBtn" class="action grab"><span>♧</span><b>抓取</b><small>E</small></button><button id="swatBtn" class="action swat"><span>✿</span><b>拍一下</b><small>F</small></button><button id="jumpBtn" class="action jump"><span>↑</span><b>跳跃</b><small>空格</small></button></div>
+    </div>
+    <div class="desktop-help">W A S D 移动 <em>·</em> 拖动画面转头 <em>·</em> E 抓取 / 抛出 <em>·</em> F 拍打 <em>·</em> 空格 跳跃</div>
+  </div>
+  <section id="menu" class="overlay">
+    <div class="menu-card">
+      <div class="eyebrow"><span></span> 一间小屋，一只好奇的小猫</div>
+      <h1>今天，<br>当只<span>小橘猫</span><i>。</i></h1>
+      <p class="intro">阳光正好，奶奶在家。<br>跳上沙发，拍拍花盆，开始你的捣蛋日。</p>
+      <button id="startBtn" class="primary"><span>伸个懒腰，出发</span><b>↗</b></button>
+      <div class="menu-bottom"><span>✦ 3D 自由探索</span><span>♡ 没有失败，慢慢玩</span></div>
+      <p class="save-note" id="saveNote">左右手一起玩：左边走路，右边转头</p>
+    </div>
+    <div class="postmark"><b>ORANGE<br>AFTERNOON</b><span>小猫的第 001 个好日子</span></div>
+    <div class="loading-pill" id="loading">正在把阳光搬进小屋…</div>
+  </section>
+  <section id="pauseMenu" class="overlay hidden"><div class="dialog"><span class="dialog-icon">☀</span><h2>歇一会儿</h2><p>小猫也需要伸伸懒腰。</p><button id="resumeBtn" class="primary">继续探险 <b>↗</b></button><button id="soundBtn" class="secondary">声音：开启</button><button id="helpBtn" class="secondary">怎么玩</button><button id="resetBtn" class="text-button">重新开始今天</button><p id="helpText" class="hidden help">左边摇杆走路，右边划动转头。<br>对准物品后抓取，再点一次抛出。<br>拍东西会引来奶奶，她靠近时会轻轻挠你！<br>收集心愿星星，也可以随便探索。<br>进度保存在这台设备的浏览器里。<br>Safari 分享 → 添加到主屏幕，玩起来更方便。</p><div id="resetConfirm" class="hidden"><p>要清空心愿进度，开始新的一天吗？</p><button id="confirmResetBtn" class="secondary">确定重玩</button><button id="cancelResetBtn" class="text-button">取消</button></div></div></section>
+  <section id="winMenu" class="overlay hidden"><div class="dialog win"><div class="win-stars">✦ ✦ ✦ ✦ ✦</div><h2>今天也是<br>超棒的小猫！</h2><p>五个小心愿都实现啦。<br>小屋里还有好多角落等你发现。</p><button id="keepPlayingBtn" class="primary">继续自由探索 <b>↗</b></button><button id="newDayBtn" class="secondary">再玩新的一天</button></div></section>
+  <section id="errorPanel" class="overlay hidden"><div class="dialog"><h2>小屋还没准备好</h2><p id="errorText">请刷新页面再试一次。</p><button onclick="location.reload()" class="primary">重新打开</button></div></section>
+  <script>window.addEventListener('error',e=>{if(!window.catReady){document.getElementById('errorPanel').classList.remove('hidden');document.getElementById('errorText').textContent='游戏加载遇到问题，请用较新的 Safari 或 Chrome 刷新重试。';}});</script>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
