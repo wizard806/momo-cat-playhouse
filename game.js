@@ -317,33 +317,45 @@ addTreat('fish1', -4.8, .36, 3.8); addTreat('fish2', 1.4, 1.22, 4.6); addTreat('
 
 // An original friendly granny, with a simple visible state machine.
 const granny = group(4.5, 0, -1), limbs = {};
-const dress = mesh(new THREE.CylinderGeometry(.23, .42, .85, 12), '#ac9ab6', [0, .9, 0], [1, 1, 1], granny);
+const dress = mesh(new THREE.CylinderGeometry(.29, .34, .7, 16), '#b84f4c', [0, 1.02, 0], [1, 1, 1], granny);
+sphere('#e9cbb0', 0, 1.38, .01, .10, .12, .10, granny);
+box('#f3dec7', 0, 1.28, .265, .13, .19, .045, granny);
+for (let y of [.81,.93,1.05,1.17]) sphere('#f3dfb8', 0, y, .321, .018, .018, .012, granny);
+for (let side of [-1,1]) { const collar=box('#f0dfcb', side*.09, 1.31, .25, .12, .1, .04, granny); collar.rotation.z=side*-.35; }
+
 for (let side of [-1, 1]) {
-  const leg = group(side * .14, .48, 0, granny); cyl('#806b75', 0, -.11, 0, .073, .22, leg);
-  const knee = group(0, -.22, 0, leg); cyl('#806b75', 0, -.08, 0, .067, .17, knee); sphere('#715b59', 0, -.18, .07, .11, .065, .17, knee); limbs['leg' + side] = leg; limbs['knee' + side] = knee;
-  const arm = group(side * .3, 1.27, 0, granny); cyl('#ad9cb7', 0, -.1, 0, .085, .21, arm);
-  const elbow = group(0, -.21, 0, arm); cyl('#b4a2bd', 0, -.07, 0, .068, .16, elbow); sphere('#efd0ad', 0, -.19, .02, .075, .09, .075, elbow); limbs['arm' + side] = arm; limbs['elbow' + side] = elbow;
+  const leg = group(side * .14, .48, 0, granny); cyl('#59444f', 0, -.11, 0, .105, .25, leg);
+  const knee = group(0, -.22, 0, leg); cyl('#59444f', 0, -.08, 0, .095, .19, knee); sphere('#715b59', 0, -.18, .07, .11, .065, .17, knee); limbs['leg' + side] = leg; limbs['knee' + side] = knee;
+  const arm = group(side * .3, 1.27, 0, granny); cyl('#b84f4c', 0, -.1, 0, .09, .21, arm);
+  const elbow = group(0, -.21, 0, arm); cyl('#b84f4c', 0, -.07, 0, .075, .16, elbow); sphere('#efd0ad', 0, -.19, .02, .075, .09, .075, elbow); limbs['arm' + side] = arm; limbs['elbow' + side] = elbow;
 }
 const grannyHead = group(0, 1.6, .03, granny);
 sphere('#f2d5b8', 0, 0, 0, .26, .3, .24, grannyHead);
-sphere('#dedccf', 0, .18, -.1, .27, .18, .24, grannyHead); sphere('#e4e1d7', 0, .36, -.13, .13, .13, .13, grannyHead);
+sphere('#d9d8d0', 0, .18, -.1, .27, .18, .24, grannyHead);
+sphere('#e4e1d7', 0, .34, -.16, .16, .15, .15, grannyHead);
+for (let x of [-.16,-.08,0,.08,.16]) sphere('#e9e8e2',x,.23,.10,.075,.075,.10,grannyHead);
+for (let x of [-.24,.24]) sphere('#edcfb5',x,-.015,0,.055,.075,.04,grannyHead);
 sphere('#ebc5a5', 0, -.01, .24, .055, .07, .065, grannyHead);
 for (let x of [-.11, .11]) {
-  sphere('#675c53', x, .04, .207, .022, .027, .01, grannyHead);
+  sphere('#fff9ee', x, .04, .22, .05, .037, .021, grannyHead);
+  sphere('#5b514c', x, .04, .239, .019, .024, .012, grannyHead);
+  const brow=box('#a99f96',x,.12,.205,.11,.018,.022,grannyHead);brow.rotation.z=x<0?.16:-.16;
   const glasses = new THREE.Mesh(new THREE.TorusGeometry(.09, .011, 5, 16), mat('#796c63')); glasses.position.set(x, .04, .227); grannyHead.add(glasses);
   sphere('#e6af94', x * 1.4, -.06, .17, .055, .025, .02, grannyHead);
 }
 box('#796c63', 0, .05, .239, .05, .012, .012, grannyHead);
-sphere('#bf997c', 0, -.11, .207, .055, .012, .01, grannyHead);
+const smile = new THREE.Mesh(new THREE.TorusGeometry(.065,.009,6,20,Math.PI),mat('#a46765')); smile.position.set(0,-.105,.221); smile.rotation.z=Math.PI; grannyHead.add(smile);
 const grannyTarget = { type: 'granny', name: '温柔的奶奶' }; granny.traverse(m => { if (m.isMesh) m.userData.item = grannyTarget; }); interactables.push(granny);
 const patrol = [[4.5,-1],[3.9,2.5],[-1.7,2.4],[-1.6,-4.1],[1.9,-4.2],[4.5,-1]];
 let patrolIndex = 0, mood = 0, grannyWait = 0, grannyCooldown = 0, noisePoint = new THREE.Vector3(), investigating = false;
+let greetingCooldown = 4;
 let grannyAction = 'idle', grannyGesture = '', gestureTime = 0, grannyStride = 0, grannyWalkBlend = 0, navTimer = 0, grannyPath = [], navGoal = [99,99];
 function makeNoise(point, strength = 18) {
   mood = Math.min(100, mood + strength); noisePoint.copy(point); investigating = true;
   if (!gestureTime) { grannyWait = .65; grannyAction = 'listen'; grannyPath = []; navTimer = 0; }
 }
 function greetGranny() {
+  greetingCooldown = 24;
   meow(); mood = 0; investigating = false; grannyWait = 2.8; gestureTime = 2.8; grannyGesture = 'wave'; grannyPath = [];
   if (!progress.friend) { const before = completed(); progress.friend = true; reward('✦ 奶奶：橘子真乖，摸摸头！', before); }
   else toast('奶奶：最喜欢我们家的小橘子啦 ♡');
@@ -351,8 +363,13 @@ function greetGranny() {
 function grannyUpdate(dt) {
   mood = Math.max(0, mood - dt * 3.4); grannyCooldown = Math.max(0, grannyCooldown - dt); grannyWait = Math.max(0, grannyWait - dt); gestureTime = Math.max(0, gestureTime - dt); navTimer -= dt;
   const dist = Math.hypot(player.position.x - granny.position.x, player.position.z - granny.position.z);
-  const canSeeCat = mood > 32 && dist < 6 && !world.raycastClosest(new CANNON.Vec3(granny.position.x, 1.55, granny.position.z), new CANNON.Vec3(player.position.x, player.position.y + .43, player.position.z), { collisionFilterMask: 1, skipBackfaces: true }, physicsRay);
-  const chasing = mood > 32 && canSeeCat && grannyCooldown === 0 && !gestureTime;
+  greetingCooldown = Math.max(0,greetingCooldown-dt);
+  const visibleCat = dist < 6 && !world.raycastClosest(new CANNON.Vec3(granny.position.x, 1.55, granny.position.z), new CANNON.Vec3(player.position.x, player.position.y + .43, player.position.z), { collisionFilterMask: 1, skipBackfaces: true }, physicsRay);
+  if (visibleCat && dist < 2.2 && mood < 20 && !gestureTime && !investigating && greetingCooldown === 0) {
+    grannyGesture = 'wave'; gestureTime = 2.1; grannyWait = 2.1; grannyPath = []; greetingCooldown = 24;
+    toast('奶奶：小橘子，来跟我玩呀！');
+  }
+  const chasing = mood > 25 && visibleCat && grannyCooldown === 0 && !gestureTime;
   if (chasing) noisePoint.set(player.position.x, 0, player.position.z);
   const goal = chasing ? [player.position.x, player.position.z] : investigating ? [noisePoint.x, noisePoint.z] : patrol[patrolIndex];
   let distanceMoved = 0;
@@ -481,7 +498,9 @@ function beginGrab() {
   } else if (chapter && target?.type === 'chapter') { chapter.use(target,null); } else if (target?.body) {
     held = target; held.pendingBreak = false; held.body.allowSleep = false; held.body.collisionFilterGroup = 4; held.body.collisionFilterMask = ~2; held.body.wakeUp(); carryAnchor.position.copy(held.body.position); carryAnchor.velocity.setZero();
     carryJoint = new CANNON.PointToPointConstraint(held.body, new CANNON.Vec3(), carryAnchor, new CANNON.Vec3(), 38); world.addConstraint(carryJoint);
-    tone(420,.06); toast(`抓住${held.name}啦！按住抛出可以扔远一点`);
+    if (held.id === 'fish-snack') { makeNoise(held.mesh.position,20); toast('奶奶：小猫发现鱼点心啦！'); }
+    else toast(`抓住${held.name}啦！按住抛出可以扔远一点`);
+    tone(420,.06);
   } else if (target?.type === 'granny') greetGranny();
   else if (target?.type === 'bell') ringBell();
   else if (target?.type === 'scratch') scratchSofa();
@@ -661,7 +680,7 @@ function animate() {
   }
   if (started) paws.visible = true;
   renderer.render(scene, camera);
-  $('world').dataset.state = JSON.stringify({ version:'1.2', level, objects:chapter ? dynamic.map(o=>({id:o.id,position:[o.body.position.x,o.body.position.y,o.body.position.z]})) : undefined, chapter:chapter ? {title:chapter.title,done:chapter.done} : null, running, player: [player.position.x, player.position.y, player.position.z].map(n => Math.round(n * 100) / 100), velocity: [player.velocity.x,player.velocity.y,player.velocity.z], view: [viewYaw,viewPitch], inputView:[yaw,pitch], held: held?.id || null, holding: held ? { position:[held.body.position.x,held.body.position.y,held.body.position.z], mass:held.body.mass, type:held.body.type, mask:held.body.collisionFilterMask,sleep:held.body.sleepState,canSleep:held.body.allowSleep,anchor:[carryAnchor.position.x,carryAnchor.position.y,carryAnchor.position.z], charge:throwStarted < 0 ? 0 : totalTime - throwStarted } : null, lastCarryDrop, lastThrow, target: target?.name || null, broken:dynamic.filter(o=>o.broken).map(o=>o.id), fragments:debris.length, scratches:scratchMarks.length, granny:{ action:grannyAction,position:[granny.position.x,granny.position.z],path:grannyPath.length }, renderCalls: renderer.info.render.calls });
+  $('world').dataset.state = JSON.stringify({ version:'1.3', level, objects:chapter ? dynamic.map(o=>({id:o.id,position:[o.body.position.x,o.body.position.y,o.body.position.z]})) : undefined, chapter:chapter ? {title:chapter.title,done:chapter.done} : null, running, player: [player.position.x, player.position.y, player.position.z].map(n => Math.round(n * 100) / 100), velocity: [player.velocity.x,player.velocity.y,player.velocity.z], view: [viewYaw,viewPitch], inputView:[yaw,pitch], held: held?.id || null, holding: held ? { position:[held.body.position.x,held.body.position.y,held.body.position.z], mass:held.body.mass, type:held.body.type, mask:held.body.collisionFilterMask,sleep:held.body.sleepState,canSleep:held.body.allowSleep,anchor:[carryAnchor.position.x,carryAnchor.position.y,carryAnchor.position.z], charge:throwStarted < 0 ? 0 : totalTime - throwStarted } : null, lastCarryDrop, lastThrow, target: target?.name || null, broken:dynamic.filter(o=>o.broken).map(o=>o.id), fragments:debris.length, scratches:scratchMarks.length, granny:{ action:grannyAction,position:[granny.position.x,granny.position.z],path:grannyPath.length }, renderCalls: renderer.info.render.calls });
 }
 updateQuests();
 if (completed() > 0) $('saveNote').textContent = `已经实现 ${completed()} 个小心愿 · 继续上一次的小猫日`;
