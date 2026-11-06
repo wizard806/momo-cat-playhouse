@@ -1,3 +1,4 @@
+import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { buildChapter } from './chapters.js';
 import * as THREE from './vendor/three.module.js';
 import * as CANNON from './vendor/cannon-es.js';
@@ -63,20 +64,32 @@ const renderer = new THREE.WebGLRenderer({ canvas: $('world'), antialias: !mobil
 renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.24;
+renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.02;
 const scene = new THREE.Scene(); scene.background = new THREE.Color('#bcd7d2'); scene.fog = new THREE.Fog('#dbdfcc', 24, 55);
 const camera = new THREE.PerspectiveCamera(73, innerWidth / innerHeight, .045, 65);
 camera.rotation.order = 'YXZ'; scene.add(camera);
-scene.add(new THREE.HemisphereLight('#fff2d9', '#b3bca1', 2.0));
-const sun = new THREE.DirectionalLight('#fff1d2', 3.2); sun.position.set(3, 11, 5); sun.castShadow = true;
+scene.add(new THREE.HemisphereLight('#fff4dd', '#73869a', 1.35));
+const sun = new THREE.DirectionalLight('#fff2dc', 2.4); sun.position.set(3, 11, 5); sun.castShadow = true;
 sun.shadow.mapSize.set(mobile ? 1024 : 2048, mobile ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: .1, far: 30 });
 sun.shadow.bias = -.0004; sun.shadow.normalBias = .035; scene.add(sun);
-const fill = new THREE.DirectionalLight('#d0e8e3', 1.0); fill.position.set(-6, 5, -5); scene.add(fill);
+const fill = new THREE.DirectionalLight('#d3e4f0', .65); fill.position.set(-6, 5, -5); scene.add(fill);
 const materials = new Map();
+function makeWoodTexture() {
+  const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 256;
+  const ctx = canvas.getContext('2d'); ctx.fillStyle = '#e8e3da'; ctx.fillRect(0,0,128,256);
+  for (let i=0;i<55;i++) {
+    const x=(i*71)%128, width=1+(i%3), alpha=.035+(i%5)*.012;
+    ctx.strokeStyle=`rgba(88,61,38,${alpha})`;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x,0);
+    for(let y=0;y<=256;y+=16)ctx.lineTo(x+Math.sin(y*.025+i)*2,y);ctx.stroke();
+  }
+  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture;
+}
+const woodTexture = makeWoodTexture();
+const woodColors = new Set(['#e7d3b0','#e3cdaa','#c8904e','#dba659','#c4996c','#b1875b','#c9ac80','#c58b4b','#d5a05c']);
 function mat(color, roughness = .8, extra = {}) {
   const key = color + roughness + JSON.stringify(extra);
-  if (!materials.has(key)) materials.set(key, new THREE.MeshStandardMaterial({ color, roughness, ...extra }));
+  if (!materials.has(key)) materials.set(key, new THREE.MeshStandardMaterial({ color, roughness, map: woodColors.has(color) ? woodTexture : null, ...extra }));
   return materials.get(key);
 }
 const geometries = { box: new THREE.BoxGeometry(1, 1, 1), sphere: new THREE.SphereGeometry(1, 14, 10), cylinder: new THREE.CylinderGeometry(1, 1, 1, 16) };
@@ -116,9 +129,9 @@ function shadow(x, z, sx, sz, opacity = .12) {
 // A small original house, made entirely from primitives.
 furniture('#dac5a0', 0, -.15, 0, 16, .3, 12, false);
 for (let i = -7; i <= 7; i++) { box(i % 2 ? '#e7d3b0' : '#e3cdaa', i, .003, 0, .98, .012, 11.9).receiveShadow = true; }
-furniture('#c5d8bb', -8.1, 2, 0, .2, 4, 12);
+furniture('#86a977', -8.1, 2, 0, .2, 4, 12);
 furniture('#eadfc8', 8.1, 2, 0, .2, 4, 12);
-furniture('#eadfc8', 0, 2, -6.1, 16, 4, .2);
+furniture('#c1cfa8', 0, 2, -6.1, 16, 4, .2);
 furniture('#eed9bc', 0, 2, 6.1, 16, 4, .2);
 for (let z of [-5.96, 5.96]) box('#fff1d9', 0, .12, z, 16, .24, .07);
 for (let x of [-7.96, 7.96]) box('#fff1d9', x, .12, 0, .07, .24, 12);
@@ -134,9 +147,9 @@ for (let x of [-4.6, 3.8]) {
   for (let side of [-1, 1]) for (let i = 0; i < 4; i++) cyl(i % 2 ? '#e7b67b' : '#f8d6a5', x + side * (1.65 + i * .09), 2.45, -5.62, .09, 2.1);
 }
 // Kitchen, with low counters cats can jump onto.
-furniture('#84a99a', -6.8, .58, -3.9, 2.1, 1.16, 3.5);
+furniture('#c8904e', -6.8, .58, -3.9, 2.1, 1.16, 3.5);
 furniture('#fff0d6', -6.8, 1.2, -3.9, 2.3, .13, 3.65, false);
-for (let z of [-5, -3.9, -2.8]) { box('#a7c6b2', -5.73, .61, z, .03, .9, .95); box('#c6a45e', -5.68, .88, z, .09, .035, .25); }
+for (let z of [-5, -3.9, -2.8]) { box('#dba659', -5.73, .61, z, .03, .9, .95); box('#c6a45e', -5.68, .88, z, .09, .035, .25); }
 box('#586964', -6.7, 1.276, -4.6, 1.1, .02, .9);
 for (let z of [-4.85, -4.35]) for (let x of [-6.95, -6.45]) cyl('#344d49', x, 1.295, z, .17, .035);
 cyl('#d88655', -6.9, 1.48, -4.8, .23, .35); cyl('#e9b28d', -6.9, 1.67, -4.8, .25, .05);
@@ -146,10 +159,10 @@ textSign('小猫厨房', -7.95, 2.9, -3.8, 1.7, .58, '#4d7965', '#d6e3c7', Math.
 // Living room sofa, soft rug, low table, cushions.
 box('#e3b27f', 1.3, .025, 1.9, 5.2, .035, 4.6);
 for (let i = 0; i < 11; i++) box('#edc595', -1.1 + i * .48, .047, 1.9, .04, .01, 4.35);
-furniture('#9dbba5', 1.3, .48, 4.7, 4.5, .8, 1.35);
-furniture('#8cae96', 1.3, 1.05, 5.25, 4.5, 1.3, .32);
-for (let x of [-.83, 3.43]) furniture('#8faf98', x, .83, 4.7, .3, .7, 1.5);
-for (let x of [.2, 1.4, 2.6]) box('#bbceb3', x, .9, 4.65, 1.15, .14, 1.12);
+furniture('#4e8190', 1.3, .48, 4.7, 4.5, .8, 1.35);
+furniture('#416f7b', 1.3, 1.05, 5.25, 4.5, 1.3, .32);
+for (let x of [-.83, 3.43]) furniture('#568996', x, .83, 4.7, .3, .7, 1.5);
+for (let x of [.2, 1.4, 2.6]) box('#9ebdc0', x, .9, 4.65, 1.15, .14, 1.12);
 const pillow = box('#f3d298', .35, 1.14, 4.95, .8, .55, .23); pillow.rotation.z = .18;
 box('#e5c69a', 2.6, 1.15, 4.98, .7, .55, .23).rotation.z = -.15;
 furniture('#c4996c', .8, .62, 1.5, 2.5, .14, 1.45);
@@ -281,7 +294,7 @@ function tidyObjects() {
   mood = 0; investigating = false; toast('物品整理好啦，已经完成的心愿会保留');
 }
 
-const scratchSurface = box('#9dbba5', .4, .55, 4.014, 1.25, .52, .025);
+const scratchSurface = box('#4e8190', .4, .55, 4.014, 1.25, .52, .025);
 const scratchTarget = { type: 'scratch', name: '沙发软垫', mesh: scratchSurface }, scratchMarks = [];
 scratchSurface.userData.item = scratchTarget; interactables.push(scratchSurface);
 function scratchSofa() {
@@ -346,6 +359,21 @@ for (let x of [-.11, .11]) {
 box('#796c63', 0, .05, .239, .05, .012, .012, grannyHead);
 const smile = new THREE.Mesh(new THREE.TorusGeometry(.065,.009,6,20,Math.PI),mat('#a46765')); smile.position.set(0,-.105,.221); smile.rotation.z=Math.PI; grannyHead.add(smile);
 const grannyTarget = { type: 'granny', name: '温柔的奶奶' }; granny.traverse(m => { if (m.isMesh) m.userData.item = grannyTarget; }); interactables.push(granny);
+// Keep the low-cost original meshes as invisible picking proxies after the rigged model loads.
+const grannyProxy = new THREE.Group(); for (const child of [...granny.children]) grannyProxy.add(child); granny.add(grannyProxy);
+let grannyMixer = null, grannyWalkAction = null, grannyRunAction = null, grannyRig = null, grannyModelInfo = null, activeGrannyClip = '';
+const grannyBoneOffsets = new Map();
+new GLTFLoader().load('./assets/granny.glb', gltf => {
+  const model = gltf.scene; const bounds = new THREE.Box3().setFromObject(model); const height = bounds.max.y - bounds.min.y;
+  if (!Number.isFinite(height) || height < .1) return;
+  const scale = 1.78 / 1.6; model.scale.setScalar(scale); model.position.y = 0; grannyModelInfo={height,scale,min:bounds.min.y};
+  model.traverse(node => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; node.frustumCulled = false; node.raycast = () => {}; node.userData.item = grannyTarget; } });
+  granny.add(model); grannyProxy.visible = false; grannyRig = model;
+  grannyMixer = new THREE.AnimationMixer(model);
+  const walk = THREE.AnimationClip.findByName(gltf.animations,'walk'), run = THREE.AnimationClip.findByName(gltf.animations,'run');
+  grannyWalkAction = walk ? grannyMixer.clipAction(walk) : null; grannyRunAction = run ? grannyMixer.clipAction(run) : null;
+  if (grannyWalkAction) { grannyWalkAction.play(); grannyWalkAction.paused = true; activeGrannyClip = 'walk'; }
+}, undefined, () => { /* The original model remains available if the download fails. */ });
 const patrol = [[4.5,-1],[3.9,2.5],[-1.7,2.4],[-1.6,-4.1],[1.9,-4.2],[4.5,-1]];
 let patrolIndex = 0, mood = 0, grannyWait = 0, grannyCooldown = 0, noisePoint = new THREE.Vector3(), investigating = false;
 let greetingCooldown = 4;
@@ -409,6 +437,19 @@ function grannyUpdate(dt) {
     arm.rotation.x = damp(arm.rotation.x, petting ? -.95 : gestureArm ? -.45 : -swing * s * .7 + Math.sin(totalTime * 1.8) * .025, 10, dt);
     arm.rotation.z = damp(arm.rotation.z, gestureArm ? -.9 : petting ? -s * .12 : -s * .07, 10, dt);
     elbow.rotation.x = damp(elbow.rotation.x, gestureArm ? -1.45 + (waving ? Math.sin(totalTime * 7) * .2 : 0) : petting ? -.5 + Math.sin(totalTime * 6) * .16 : -.12, 10, dt);
+  }
+  if (grannyMixer && grannyWalkAction) {
+    const nextClip = chasing && grannyRunAction ? 'run' : 'walk';
+    if (nextClip !== activeGrannyClip) { (activeGrannyClip === 'run' ? grannyRunAction : grannyWalkAction).stop(); (nextClip === 'run' ? grannyRunAction : grannyWalkAction).reset().play(); activeGrannyClip = nextClip; }
+    const action = activeGrannyClip === 'run' ? grannyRunAction : grannyWalkAction;
+    for (const [bone,offset] of grannyBoneOffsets) bone.quaternion.multiply(offset.clone().invert());
+    grannyBoneOffsets.clear();
+    action.paused = distanceMoved < .0001; grannyMixer.update(dt);
+    function poseBone(bone,euler) { if (!bone) return; const offset = new THREE.Quaternion().setFromEuler(euler); bone.quaternion.multiply(offset); grannyBoneOffsets.set(bone,offset); }
+    const head = grannyRig.getObjectByName('Head'), arm = grannyRig.getObjectByName('RightArm'), forearm = grannyRig.getObjectByName('RightForeArm');
+    if (head && (inspecting || petting || waving)) poseBone(head,new THREE.Euler(.12,0,0));
+    if (arm && (waving || listening || petting)) poseBone(arm,new THREE.Euler(0,0,petting?-.4:-.7));
+    if (forearm && (waving || listening || petting)) poseBone(forearm,new THREE.Euler(petting?-.3:Math.sin(totalTime*7)*.15,0,0));
   }
   $('moodFill').style.width = mood + '%';
   $('grannyMood').textContent = ({ listen:'奶奶竖起耳朵听', inspect:'奶奶在查看物品', wave:'奶奶向你招手', pet:'奶奶摸摸小猫', chase:'奶奶来找你啦', walk:'奶奶在散步', idle:'奶奶在歇脚' })[grannyAction];
@@ -680,7 +721,7 @@ function animate() {
   }
   if (started) paws.visible = true;
   renderer.render(scene, camera);
-  $('world').dataset.state = JSON.stringify({ version:'1.3', level, objects:chapter ? dynamic.map(o=>({id:o.id,position:[o.body.position.x,o.body.position.y,o.body.position.z]})) : undefined, chapter:chapter ? {title:chapter.title,done:chapter.done} : null, running, player: [player.position.x, player.position.y, player.position.z].map(n => Math.round(n * 100) / 100), velocity: [player.velocity.x,player.velocity.y,player.velocity.z], view: [viewYaw,viewPitch], inputView:[yaw,pitch], held: held?.id || null, holding: held ? { position:[held.body.position.x,held.body.position.y,held.body.position.z], mass:held.body.mass, type:held.body.type, mask:held.body.collisionFilterMask,sleep:held.body.sleepState,canSleep:held.body.allowSleep,anchor:[carryAnchor.position.x,carryAnchor.position.y,carryAnchor.position.z], charge:throwStarted < 0 ? 0 : totalTime - throwStarted } : null, lastCarryDrop, lastThrow, target: target?.name || null, broken:dynamic.filter(o=>o.broken).map(o=>o.id), fragments:debris.length, scratches:scratchMarks.length, granny:{ action:grannyAction,position:[granny.position.x,granny.position.z],path:grannyPath.length }, renderCalls: renderer.info.render.calls });
+  $('world').dataset.state = JSON.stringify({ version:'1.4', modelLoaded:!!grannyRig, modelInfo:grannyModelInfo, level, objects:chapter ? dynamic.map(o=>({id:o.id,position:[o.body.position.x,o.body.position.y,o.body.position.z]})) : undefined, chapter:chapter ? {title:chapter.title,done:chapter.done} : null, running, player: [player.position.x, player.position.y, player.position.z].map(n => Math.round(n * 100) / 100), velocity: [player.velocity.x,player.velocity.y,player.velocity.z], view: [viewYaw,viewPitch], inputView:[yaw,pitch], held: held?.id || null, holding: held ? { position:[held.body.position.x,held.body.position.y,held.body.position.z], mass:held.body.mass, type:held.body.type, mask:held.body.collisionFilterMask,sleep:held.body.sleepState,canSleep:held.body.allowSleep,anchor:[carryAnchor.position.x,carryAnchor.position.y,carryAnchor.position.z], charge:throwStarted < 0 ? 0 : totalTime - throwStarted } : null, lastCarryDrop, lastThrow, target: target?.name || null, broken:dynamic.filter(o=>o.broken).map(o=>o.id), fragments:debris.length, scratches:scratchMarks.length, granny:{ action:grannyAction,position:[granny.position.x,granny.position.z],path:grannyPath.length }, renderCalls: renderer.info.render.calls });
 }
 updateQuests();
 if (completed() > 0) $('saveNote').textContent = `已经实现 ${completed()} 个小心愿 · 继续上一次的小猫日`;
