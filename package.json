@@ -1,0 +1,1 @@
+{"name":"orange-cat-playhouse","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.mjs","check":"node --check game.js && node --check mechanics.js && node --check sw.js"}}
