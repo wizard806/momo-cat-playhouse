@@ -10,7 +10,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./apple-touch-icon.png">
-  <link rel="stylesheet" href="./style.css?v=1.1-r2">
+  <link rel="stylesheet" href="./style.css?v=1.2-r1">
   <title>橘子的小小捣蛋日 · 小猫游戏</title>
 </head>
 <body>
@@ -23,7 +23,7 @@
     </header>
     <section id="questPanel"><div class="quest-heading"><span>今日小心愿</span><button id="questToggle" aria-label="收起或展开任务">⌃</button></div><div id="questList"></div></section>
     <div id="grannyStatus"><span class="granny-face">☺</span><div><b id="grannyMood">奶奶在散步</b><small id="grannyHint">轻轻地，别让她听到呀</small></div><div class="mood-track"><i id="moodFill"></i></div></div>
-    <div id="crosshair"><i></i></div>
+    <div id="objective" aria-live="polite"></div><div id="crosshair"><i></i></div>
     <div id="targetHint"></div>
     <div id="throwMeter" class="hidden"><span>松手抛出</span><div><i id="throwFill"></i></div><small>轻点近抛 · 按住远抛</small></div>
     <div id="toast" role="status" aria-live="polite"></div>
@@ -39,17 +39,18 @@
       <div class="eyebrow"><span></span> 一间小屋，一只好奇的小猫</div>
       <h1>今天，<br>当只<span>小橘猫</span><i>。</i></h1>
       <p class="intro">阳光正好，奶奶在家。<br>跳上沙发，抓抓拍拍，开始你的捣蛋日。</p>
+<nav class="chapters" aria-label="选择关卡"><a href="?level=1" data-level="1">① 客厅捣蛋</a><a href="?level=2" data-level="2">② 厨房寻宝</a><a href="?level=3" data-level="3">③ 院子冒险</a></nav>
       <button id="startBtn" class="primary"><span>伸个懒腰，出发</span><b>↗</b></button>
-      <div class="menu-bottom"><span>✦ 手感与互动更新 · 1.1</span><span>♡ 没有失败，慢慢玩</span></div>
+      <div class="menu-bottom"><span>✦ 三关探索更新 · 1.2</span><span>♡ 没有失败，慢慢玩</span></div>
       <p class="save-note" id="saveNote">左右手一起玩：左边走路，右边转头</p>
     </div>
     <div class="postmark"><b>ORANGE<br>AFTERNOON</b><span>小猫的第 001 个好日子</span></div>
     <div class="loading-pill" id="loading">正在把阳光搬进小屋…</div>
   </section>
-  <section id="pauseMenu" class="overlay hidden"><div class="dialog"><span class="dialog-icon">☀</span><h2>歇一会儿</h2><p>小猫也需要伸伸懒腰。</p><button id="resumeBtn" class="primary">继续探险 <b>↗</b></button><button id="soundBtn" class="secondary">声音：开启</button><button id="tidyBtn" class="secondary">整理物品 · 保留心愿</button><button id="helpBtn" class="secondary">怎么玩</button><button id="resetBtn" class="text-button">重新开始今天</button><p id="helpText" class="hidden help">左边摇杆走路，右边划动转头。<br>对准物品抓起后，轻点抛出，按住再松手扔得更远。<br>拍打杯罐会摔出碎片，也可以挠挠沙发。<br>奶奶会转身查看动静，靠近时轻轻摸摸头。<br>暂停后可以整理物品，已经完成的心愿会保留。<br>进度保存在这台设备的浏览器里。<br>Safari 分享 → 添加到主屏幕，玩起来更方便。</p><div id="resetConfirm" class="hidden"><p>要清空心愿进度，开始新的一天吗？</p><button id="confirmResetBtn" class="secondary">确定重玩</button><button id="cancelResetBtn" class="text-button">取消</button></div></div></section>
-  <section id="winMenu" class="overlay hidden"><div class="dialog win"><div class="win-stars">✦ ✦ ✦ ✦ ✦</div><h2>今天也是<br>超棒的小猫！</h2><p>五个小心愿都实现啦。<br>小屋里还有好多角落等你发现。</p><button id="keepPlayingBtn" class="primary">继续自由探索 <b>↗</b></button><button id="newDayBtn" class="secondary">再玩新的一天</button></div></section>
+  <section id="pauseMenu" class="overlay hidden"><div class="dialog"><span class="dialog-icon">☀</span><h2>歇一会儿</h2><p>小猫也需要伸伸懒腰。</p><button id="resumeBtn" class="primary">继续探险 <b>↗</b></button><button id="soundBtn" class="secondary">声音：开启</button><button id="tidyBtn" class="secondary">整理物品 · 保留心愿</button><nav class="chapters" aria-label="选择关卡"><a href="?level=1" data-level="1">① 客厅捣蛋</a><a href="?level=2" data-level="2">② 厨房寻宝</a><a href="?level=3" data-level="3">③ 院子冒险</a></nav><button id="helpBtn" class="secondary">怎么玩</button><button id="resetBtn" class="text-button">重新开始今天</button><p id="helpText" class="hidden help">左边摇杆走路，右边划动转头。<br>对准物品抓起后，轻点抛出，按住再松手扔得更远。<br>拍打杯罐会摔出碎片，也可以挠挠沙发。<br>奶奶会转身查看动静，靠近时轻轻摸摸头。<br>暂停后可以整理物品，已经完成的心愿会保留。<br>进度保存在这台设备的浏览器里。<br>Safari 分享 → 添加到主屏幕，玩起来更方便。</p><div id="resetConfirm" class="hidden"><p>只清空当前关卡的心愿，重新开始吗？</p><button id="confirmResetBtn" class="secondary">确定重玩</button><button id="cancelResetBtn" class="text-button">取消</button></div></div></section>
+  <section id="winMenu" class="overlay hidden"><div class="dialog win"><div class="win-stars">✦ ✦ ✦ ✦ ✦</div><h2>今天也是<br>超棒的小猫！</h2><p>这一关的五个小心愿都实现啦。<br>小屋里还有好多角落等你发现。</p><button id="keepPlayingBtn" class="primary">继续自由探索 <b>↗</b></button><a id="nextChapter" class="primary" href="?level=2">去下一关 ↗</a><button id="newDayBtn" class="secondary">再玩新的一天</button></div></section>
   <section id="errorPanel" class="overlay hidden"><div class="dialog"><h2>小屋还没准备好</h2><p id="errorText">请刷新页面再试一次。</p><button onclick="location.reload()" class="primary">重新打开</button></div></section>
   <script>window.addEventListener('error',e=>{if(!window.catReady){document.getElementById('errorPanel').classList.remove('hidden');document.getElementById('errorText').textContent='游戏加载遇到问题，请用较新的 Safari 或 Chrome 刷新重试。';}});</script>
-  <script type="module" src="./game.js?v=1.1-r2"></script>
+  <script type="module" src="./game.js?v=1.2-r1"></script>
 </body>
 </html>

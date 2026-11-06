@@ -1,10 +1,13 @@
+import { buildChapter } from './chapters.js';
 import * as THREE from './vendor/three.module.js';
 import * as CANNON from './vendor/cannon-es.js';
 import { damp, dampAngle, radialStick, throwPower, findPath, segmentClear } from './mechanics.js';
 
 const $ = id => document.getElementById(id);
 const mobile = matchMedia('(pointer:coarse)').matches;
-const STORE = 'orange-playhouse-v1';
+const level = [2,3].includes(Number(new URLSearchParams(location.search).get('level'))) ? Number(new URLSearchParams(location.search).get('level')) : 1;
+let chapter = null;
+const STORE = level === 1 ? 'orange-playhouse-v1' : 'orange-playhouse-chapter-' + level;
 let saved = {};
 try { saved = JSON.parse(localStorage.getItem(STORE) || '{}'); } catch { /* A fresh game also works without storage. */ }
 const progress = {
@@ -20,10 +23,10 @@ let throwStarted = -1, throwTime = 0, swatSide = 0, interactionTime = 0, bellTim
 const move = { x: 0, y: 0 }, keys = new Set(), dynamic = [], interactables = [], treats = [], wallBlocks = [], debris = [];
 const tmp = new THREE.Vector3(), forward = new THREE.Vector3();
 const carryPoint = new THREE.Vector3(), physicsRay = new CANNON.RaycastResult();
-const counts = () => [progress.knocked.length >= 3, progress.treats.length >= 4, progress.basket, progress.bell, progress.friend];
+const counts = () => chapter ? chapter.done : [progress.knocked.length >= 3, progress.treats.length >= 4, progress.basket, progress.bell, progress.friend];
 const completed = () => counts().filter(Boolean).length;
 function save() {
-  try { localStorage.setItem(STORE, JSON.stringify({ ...progress, sound: soundOn })); }
+  try { localStorage.setItem(STORE, JSON.stringify({ ...progress, sound: soundOn, chapter: chapter?.done })); }
   catch { $('saveNote').textContent = '当前浏览器无法保存进度，本次仍可正常游玩'; }
 }
 function toast(text) {
@@ -31,8 +34,8 @@ function toast(text) {
 }
 function updateQuests() {
   const done = counts();
-  const labels = ['拍落三个小物件', '找到四条小鱼饼干', '把毛线球送进篮子', '拍拍厨房的小铃铛', '跟奶奶打个招呼'];
-  $('questList').innerHTML = labels.map((label, i) => `<div class="quest-row ${done[i] ? 'done' : ''}"><i>${done[i] ? '✓' : '·'}</i><span>${label}</span><small>${i === 0 ? Math.min(progress.knocked.length, 3) + '/3' : i === 1 ? Math.min(progress.treats.length, 4) + '/4' : done[i] ? '完成' : '✦'}</small></div>`).join('');
+  const labels = chapter ? chapter.labels : ['拍落三个小物件', '找到四条小鱼饼干', '把毛线球送进篮子', '拍拍厨房的小铃铛', '跟奶奶打个招呼'];
+  $('questList').innerHTML = labels.map((label, i) => `<div class="quest-row ${done[i] ? 'done' : ''}"><i>${done[i] ? '✓' : '·'}</i><span>${label}</span><small>${!chapter && i === 0 ? Math.min(progress.knocked.length, 3) + '/3' : !chapter && i === 1 ? Math.min(progress.treats.length, 4) + '/4' : done[i] ? '完成' : '✦'}</small></div>`).join('');
   $('stars').textContent = completed();
 }
 function reward(text, previous) {
@@ -191,6 +194,14 @@ function addObject(id, name, type, pos, size, color) {
     cyl('#6c7651', 0, size * .55, 0, size * .62, .025, g);
     for (let i = 0; i < 4; i++) { const a = i * 2; const leaf = sphere('#8baf7a', Math.cos(a) * size * .4, size * .95, Math.sin(a) * size * .4, size * .4, size * .75, size * .35, g); leaf.rotation.z = Math.cos(a) * .6; }
     shape = new CANNON.Box(new CANNON.Vec3(size * .75, size * 1.05, size * .75));
+  } else if (type === 'pin') {
+    cyl(color,0,0,0,.16,.6,g); cyl('#fff0cb',0,.17,0,.165,.06,g);
+    shape = new CANNON.Cylinder(.16,.16,.6,12);
+  } else if (type === 'snack') {
+    sphere(color,0,0,0,.25,.09,.11,g);
+    const tail = mesh(new THREE.ConeGeometry(.13,.18,3),color,[-.26,0,0],[1,1,1],g); tail.rotation.z=-Math.PI/2;
+    sphere('#79613e',.12,.035,.09,.02,.02,.015,g);
+    shape = new CANNON.Box(new CANNON.Vec3(.25,.09,.11));
   } else if (type === 'book') {
     box(color, 0, 0, 0, size * 1.8, size * .35, size * 1.3, g); box('#fff0d5', 0, .005, 0, size * 1.65, size * .22, size * 1.24, g);
     shape = new CANNON.Box(new CANNON.Vec3(size * .9, size * .175, size * .65));
@@ -236,6 +247,7 @@ addObject('vase1', '小陶罐', 'vase', [1.65, .94, 1.8], .24, '#dcaa87');
 addObject('vase2', '架子上的花瓶', 'vase', [7.05, 1.17, 2.2], .23, '#a2bdb1');
 
 function countKnocked(obj) {
+  if (chapter) return;
   if (obj.type === 'ball' || progress.knocked.includes(obj.id)) return;
   const before = completed(); progress.knocked.push(obj.id);
   if (progress.knocked.length === 3) reward('✦ 三个小物件落地，捣蛋高手！', before);
@@ -427,8 +439,9 @@ function updateTarget() {
   // A small touch-friendly aiming margin for the two tiny interaction targets.
   if (!target) {
     camera.getWorldDirection(forward);
-    const candidates = dynamic.filter(o => !o.broken && o !== held).map(o => [o,o.mesh.position]);
+    const candidates = dynamic.filter(o => !o.broken && o !== held && o.mesh.visible).map(o => [o,o.mesh.position]);
     candidates.push([bellTarget, bell.position.clone().add(new THREE.Vector3(0,.12,0))], [grannyTarget, granny.position.clone().add(new THREE.Vector3(0,1.1,0))]);
+    if (chapter) for (const t of chapter.targets) candidates.push([t,new THREE.Box3().setFromObject(t.mesh).getCenter(new THREE.Vector3())]);
     let best = .966;
     for (const [item, point] of candidates) {
       tmp.copy(point).sub(camera.position);
@@ -441,7 +454,7 @@ function updateTarget() {
   $('crosshair').classList.toggle('active', !!target);
   const hint = $('targetHint');
   if (held) { hint.style.display = 'block'; hint.textContent = target?.type === 'basket' && held === yarn ? '抓取键 · 把毛线球放回家' : `拿着${held.name} · 轻点近抛，长按远抛`; }
-  else if (target) { hint.style.display = 'block'; hint.textContent = target.type === 'granny' ? '抓取键 · 喵一声打招呼' : target.type === 'basket' ? '把毛线球带到这里来' : target.type === 'bell' ? '拍拍它，叮铃铃' : target.type === 'scratch' ? '拍打键 · 挠挠沙发软垫' : target.name + ' · 可以抓，也可以拍'; }
+  else if (target) { hint.style.display = 'block'; hint.textContent = target.type === 'chapter' ? target.name : target.type === 'granny' ? '抓取键 · 喵一声打招呼' : target.type === 'basket' ? '把毛线球带到这里来' : target.type === 'bell' ? '拍拍它，叮铃铃' : target.type === 'scratch' ? '拍打键 · 挠挠沙发软垫' : target.name + ' · 可以抓，也可以拍'; }
   else hint.style.display = 'none';
   $('grabBtn').querySelector('b').textContent = held ? target?.type === 'basket' && held === yarn ? '放进去' : '抛出' : target?.type === 'granny' ? '喵一声' : '抓取';
 }
@@ -462,9 +475,10 @@ function releaseHeld(throwIt = true) {
 function beginGrab() {
   if (!running || grabCooldown > 0) return; grabCooldown = .22;
   if (held) {
+    if (chapter && target?.type === 'chapter') { if (chapter.use(target,held)) { releaseHeld(false); save(); } return; }
     if (target?.type === 'basket' && held === yarn) releaseHeld(true);
     else { throwStarted = totalTime; $('throwMeter').classList.remove('hidden'); $('grabBtn').classList.add('charging'); }
-  } else if (target?.body) {
+  } else if (chapter && target?.type === 'chapter') { chapter.use(target,null); } else if (target?.body) {
     held = target; held.pendingBreak = false; held.body.allowSleep = false; held.body.collisionFilterGroup = 4; held.body.collisionFilterMask = ~2; held.body.wakeUp(); carryAnchor.position.copy(held.body.position); carryAnchor.velocity.setZero();
     carryJoint = new CANNON.PointToPointConstraint(held.body, new CANNON.Vec3(), carryAnchor, new CANNON.Vec3(), 38); world.addConstraint(carryJoint);
     tone(420,.06); toast(`抓住${held.name}啦！按住抛出可以扔远一点`);
@@ -493,7 +507,7 @@ function ringBell() {
 function swat() {
   if (!running || swatTime > .15) return;
   swatSide = 1 - swatSide; swatTime = .38; tone(170, .06, 'triangle', .02);
-  if (target?.body && target !== held && targetPoint.distanceTo(camera.position) < 2) {
+  if (chapter && target?.type === 'chapter') { chapter.use(target,null); } else if (target?.body && target !== held && targetPoint.distanceTo(camera.position) < 2) {
     camera.getWorldDirection(forward); const force = 1.6; target.body.wakeUp(); target.body.applyImpulse(new CANNON.Vec3(forward.x * force, Math.max(.45, forward.y * force + .55), forward.z * force), new CANNON.Vec3(.04,.06,0));
     target.hit = true; makeNoise(target.mesh.position, 19);
   } else if (target?.type === 'bell') ringBell();
@@ -522,7 +536,7 @@ function confetti() {
 function releaseControls() { keys.clear(); move.x = 0; move.y = 0; stickPointer = null; lookPointer = null; grabPointer = null; jumpQueuedUntil = -1; endGrab(true); carryAnchor.velocity.setZero(); $('stickKnob').style.transform = ''; }
 function pauseGame(panel = 'pauseMenu') { running = false; releaseControls(); $(panel).classList.remove('hidden'); }
 function resumeGame() { $('pauseMenu').classList.add('hidden'); $('winMenu').classList.add('hidden'); $('resetConfirm').classList.add('hidden'); running = true; resumeAudio(); }
-$('startBtn').onclick = () => { started = true; running = true; $('menu').classList.add('hidden'); $('hud').classList.remove('hidden'); camera.fov = 73; camera.updateProjectionMatrix(); resumeAudio(); meow(); toast('喵～先去小窝找一条小鱼饼干吧！'); save(); };
+$('startBtn').onclick = () => { started = true; running = true; $('menu').classList.add('hidden'); $('hud').classList.remove('hidden'); camera.fov = 73; camera.updateProjectionMatrix(); resumeAudio(); meow(); toast(chapter ? chapter.hint() : '喵～先去小窝找一条小鱼饼干吧！'); save(); };
 $('pauseBtn').onclick = () => pauseGame(); $('resumeBtn').onclick = resumeGame; $('keepPlayingBtn').onclick = resumeGame;
 $('soundBtn').textContent = soundOn ? '声音：开启' : '声音：关闭';
 $('soundBtn').onclick = () => { soundOn = !soundOn; $('soundBtn').textContent = soundOn ? '声音：开启' : '声音：关闭'; resumeAudio(); save(); };
@@ -570,6 +584,15 @@ $('world').addEventListener('pointerup', endLook); $('world').addEventListener('
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); pawGroups.forEach(p => p.scale.setScalar(camera.aspect < .75 ? .7 : .9)); releaseControls(); });
 
+if (level > 1) {
+  chapter = buildChapter(level, {scene,world,player,anchor:carryAnchor,dynamic,interactables,treats,wallBlocks,granny,box,sphere,cyl,group,furniture,solid,textSign,addObject,toast,noise:makeNoise,tone,complete:text=>reward(text,completed()-1)}, saved.chapter);
+  document.querySelector('#questPanel .quest-heading span').textContent = chapter.title;
+  document.querySelector('.intro').textContent = level === 2 ? '打开冰箱，搬运点心，试试把球投入大锅。' : '追蝴蝶、撞木罐，跳上石台探索阳光院子。';
+}
+document.querySelectorAll('[data-level]').forEach(a => a.classList.toggle('selected',Number(a.dataset.level)===level));
+$('nextChapter').href = '?level='+(level===3?1:level+1);
+$('nextChapter').textContent = level===3?'回客厅，继续捣蛋 ↗':'去下一关 ↗';
+$('objective').textContent = chapter ? chapter.hint() : '先去小窝找一条小鱼饼干，再探索家具上的角落。';
 const clockTime = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
@@ -622,13 +645,14 @@ function animate() {
       if (part.time <= 0 || part.body.position.y < -.5) { removeDebris(part); debris.splice(i,1); }
     }
     bell.rotation.z = Math.sin(bellTime * 24) * bellTime * .15;
-    if (!progress.basket && held !== yarn && Math.hypot(yarn.body.position.x - 6.3, yarn.body.position.z + 2.5) < .6 && yarn.body.position.y < 1 && yarn.body.position.y > .2) finishBasket();
+    if (!chapter && !progress.basket && held !== yarn && Math.hypot(yarn.body.position.x - 6.3, yarn.body.position.z + 2.5) < .6 && yarn.body.position.y < 1 && yarn.body.position.y > .2) finishBasket();
     for (let i = treats.length - 1; i >= 0; i--) {
       const t = treats[i]; t.mesh.rotation.y += dt * 1.1; t.mesh.position.y = t.y + Math.sin(totalTime * 2.4 + i) * .045;
       if (t.mesh.position.distanceTo(camera.position) < .75) {
         const before = completed(); progress.treats.push(t.id); scene.remove(t.mesh); treats.splice(i, 1); reward(progress.treats.length === 4 ? '✦ 四条小鱼饼干，全都找到啦！' : `小鱼饼干 +1 · ${progress.treats.length}/4`, before);
       }
     }
+    if (chapter) { chapter.update(dt,totalTime,held); $('objective').textContent = chapter.hint(); }
     grannyUpdate(dt); scene.updateMatrixWorld(); updateTarget();
     if (moving > .8 && totalTime - groundedAt < .2 && totalTime - lastStepSound > .33) { lastStepSound = totalTime; tone(100 + Math.random() * 25, .035, 'sine', .009); }
     if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) $('toast').classList.remove('show'); }
@@ -637,7 +661,7 @@ function animate() {
   }
   if (started) paws.visible = true;
   renderer.render(scene, camera);
-  $('world').dataset.state = JSON.stringify({ version:'1.1', running, player: [player.position.x, player.position.y, player.position.z].map(n => Math.round(n * 100) / 100), velocity: [player.velocity.x,player.velocity.y,player.velocity.z], view: [viewYaw,viewPitch], inputView:[yaw,pitch], held: held?.id || null, holding: held ? { position:[held.body.position.x,held.body.position.y,held.body.position.z], mass:held.body.mass, type:held.body.type, mask:held.body.collisionFilterMask,sleep:held.body.sleepState,canSleep:held.body.allowSleep,anchor:[carryAnchor.position.x,carryAnchor.position.y,carryAnchor.position.z], charge:throwStarted < 0 ? 0 : totalTime - throwStarted } : null, lastCarryDrop, lastThrow, target: target?.name || null, broken:dynamic.filter(o=>o.broken).map(o=>o.id), fragments:debris.length, scratches:scratchMarks.length, granny:{ action:grannyAction,position:[granny.position.x,granny.position.z],path:grannyPath.length }, renderCalls: renderer.info.render.calls });
+  $('world').dataset.state = JSON.stringify({ version:'1.2', level, objects:chapter ? dynamic.map(o=>({id:o.id,position:[o.body.position.x,o.body.position.y,o.body.position.z]})) : undefined, chapter:chapter ? {title:chapter.title,done:chapter.done} : null, running, player: [player.position.x, player.position.y, player.position.z].map(n => Math.round(n * 100) / 100), velocity: [player.velocity.x,player.velocity.y,player.velocity.z], view: [viewYaw,viewPitch], inputView:[yaw,pitch], held: held?.id || null, holding: held ? { position:[held.body.position.x,held.body.position.y,held.body.position.z], mass:held.body.mass, type:held.body.type, mask:held.body.collisionFilterMask,sleep:held.body.sleepState,canSleep:held.body.allowSleep,anchor:[carryAnchor.position.x,carryAnchor.position.y,carryAnchor.position.z], charge:throwStarted < 0 ? 0 : totalTime - throwStarted } : null, lastCarryDrop, lastThrow, target: target?.name || null, broken:dynamic.filter(o=>o.broken).map(o=>o.id), fragments:debris.length, scratches:scratchMarks.length, granny:{ action:grannyAction,position:[granny.position.x,granny.position.z],path:grannyPath.length }, renderCalls: renderer.info.render.calls });
 }
 updateQuests();
 if (completed() > 0) $('saveNote').textContent = `已经实现 ${completed()} 个小心愿 · 继续上一次的小猫日`;
